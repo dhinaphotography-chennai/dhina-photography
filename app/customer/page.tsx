@@ -5,7 +5,6 @@ import PhotoLoader from '@/app/components/PhotoLoader'
 import ConfirmModal from '@/app/components/ConfirmModal'
 import AlertModal from '@/app/components/AlertModal'
 import { useLogo } from '@/app/context/LogoContext'
-import { APP_NAME } from '@/lib/config'
 import { authHeaders, clearSession, getCustomerId } from '@/app/utils/session'
 import { useSessionGuard } from '@/app/hooks/useSessionGuard'
 
@@ -43,8 +42,7 @@ export default function CustomerGallery() {
   const [confirmSelectAll, setConfirmSelectAll] = useState(false)
   const [confirmClearAll, setConfirmClearAll] = useState(false)
   const [confirmSignOut, setConfirmSignOut] = useState(false)
-  const [activeFolder, setActiveFolder] = useState<string>('')
-  const [view, setView] = useState<'folders' | 'photos'>('folders')
+  const [activeFolder, setActiveFolder] = useState<string>('all')
   const [isMobile, setIsMobile] = useState(false)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingIdsRef = useRef<number[]>([])
@@ -176,18 +174,10 @@ export default function CustomerGallery() {
     return () => window.removeEventListener('keydown', onKey)
   })
 
+  const filteredPhotos = activeFolder === 'all' ? photos : photos.filter(p => String(p.folderDbId) === activeFolder)
   const maxCount = customer?.maxSelectCount || 0
   const atLimit = maxCount > 0 && selected.size >= maxCount
   const isLocked = customer?.selectionLocked === true
-
-  const filteredPhotos = activeFolder.startsWith('selected_')
-    ? (() => {
-        const fid = activeFolder.slice(9)
-        return photos.filter(p => String(p.folderDbId) === fid && (isLocked ? p.isSelected : selected.has(p.id)))
-      })()
-    : activeFolder
-      ? photos.filter(p => String(p.folderDbId) === activeFolder)
-      : photos
 
   function toggleSelect(photoId: number, e: React.MouseEvent) {
     e.stopPropagation()
@@ -231,7 +221,7 @@ export default function CustomerGallery() {
     }
   }
 
-  // Intercept browser back button — close lightbox OR go back to folders view
+  // Intercept browser back button — close lightbox instead of leaving the page
   useEffect(() => {
     function handlePopState() {
       setLightbox(prev => {
@@ -239,11 +229,7 @@ export default function CustomerGallery() {
           setZoom(1)
           setPanOffset({ x: 0, y: 0 })
           setLightboxRotation(0)
-          return null
         }
-        // No lightbox open — go back to folders view
-        setView('folders')
-        setActiveFolder('')
         return null
       })
     }
@@ -330,26 +316,9 @@ export default function CustomerGallery() {
     } finally { setSaving(false) }
   }
 
-  function openFolder(folderId: string) {
-    setActiveFolder(folderId)
-    setView('photos')
-    window.history.pushState({ folderView: folderId }, '')
-  }
-
-  function backToFolders() {
-    setView('folders')
-    setActiveFolder('')
-    closeLightbox()
-    if (window.history.state?.folderView) {
-      window.history.replaceState(null, '')
-    }
-  }
-
-  const activeFolderName = activeFolder.startsWith('selected_')
-    ? `${folders.find(f => String(f.id) === activeFolder.slice(9))?.name || 'Folder'} — Selected`
-    : folders.find(f => String(f.id) === activeFolder)?.name || ''
-
   if (loading) return <PhotoLoader fullPage message="Loading your gallery" />
+
+  const folderTabs = [{ id: 'all', name: 'All Photos', photoCount: photos.length } as any, ...folders]
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a' }}>
@@ -384,9 +353,9 @@ export default function CustomerGallery() {
             background: 'linear-gradient(135deg, #d4a017, #b8860b)',
             overflow: 'hidden', flexShrink: 0,
             boxShadow: '0 2px 8px rgba(212,160,23,0.3)',
-          }}><img src={logoUrl} alt={APP_NAME} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
+          }}><img src={logoUrl} alt="Praveen Photography" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
           <span style={{ fontFamily: "'Playfair Display', serif", color: '#f0d78c', fontSize: isMobile ? 14 : 16, fontWeight: 600, whiteSpace: 'nowrap' }}>
-            {APP_NAME}
+            Praveen Photography
           </span>
         </div>
 
@@ -486,132 +455,106 @@ export default function CustomerGallery() {
         </div>
       )}
 
-      {/* ── Folders view ── */}
-      {view === 'folders' && (
-        <main style={{ padding: isMobile ? '20px 14px' : '32px 40px' }}>
-          <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-            <div>
-              <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: isMobile ? 22 : 26, color: '#f5f0e8', marginBottom: 4 }}>
-                Your Albums
-              </h1>
-              <p style={{ color: '#555', fontSize: 13 }}>{photos.length} photo{photos.length !== 1 ? 's' : ''} across {folders.length} folder{folders.length !== 1 ? 's' : ''}</p>
-            </div>
-            {!isLocked && selected.size > 0 && (
-              <button onClick={() => setConfirmOpen(true)} className="btn-gold"
-                style={{ padding: isMobile ? '10px 20px' : '11px 24px', borderRadius: 10, fontSize: isMobile ? 13 : 14, flexShrink: 0 }}>
-                ✓ Submit {selected.size} Photo{selected.size !== 1 ? 's' : ''}
-              </button>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(200px, 1fr))', gap: isMobile ? 12 : 16 }}>
-
-            {/* Folder cards */}
-            {folders.map(folder => (
-              <button key={folder.id} onClick={() => openFolder(String(folder.id))}
+      {/* ── Mobile: Folder tabs (horizontal scroll) ── */}
+      {isMobile && folders.length > 0 && (
+        <div style={{ background: '#0d0d0d', borderBottom: '1px solid #1a1a1a', padding: '0 14px', overflowX: 'auto', display: 'flex', gap: 6, scrollbarWidth: 'none' }}>
+          <style>{`.mobile-folder-tabs::-webkit-scrollbar{display:none}`}</style>
+          <div className="mobile-folder-tabs" style={{ display: 'flex', gap: 6, padding: '10px 0', flexShrink: 0 }}>
+            {folderTabs.map(folder => (
+              <button key={folder.id}
+                onClick={() => setActiveFolder(String(folder.id))}
                 style={{
-                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-                  borderRadius: 14, padding: isMobile ? '20px 16px' : '24px 20px',
-                  cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
-                  display: 'flex', flexDirection: 'column', gap: 10,
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(212,160,23,0.07)'; e.currentTarget.style.borderColor = 'rgba(212,160,23,0.3)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)' }}>
-                <svg width={isMobile ? 34 : 40} height={isMobile ? 28 : 34} viewBox="0 0 24 22" fill="none">
-                  <path d="M2 5a2 2 0 0 1 2-2h5.17a2 2 0 0 1 1.42.59L12 5h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5z" fill="#1d4ed8"/>
-                  <path d="M2 9h20v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9z" fill="#3b82f6"/>
-                </svg>
-                <div>
-                  <p style={{ color: '#f5f0e8', fontSize: isMobile ? 14 : 15, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {folder.name}
-                  </p>
-                  <span style={{ fontSize: 11, color: '#27a33bff', background: 'rgba(255,255,255,0.06)', borderRadius: 20, padding: '2px 10px' }}>
-                    {folder.photoCount} photo{folder.photoCount !== 1 ? 's' : ''}
-                  </span>
-                </div>
+                  flexShrink: 0, padding: '6px 14px', borderRadius: 20, cursor: 'pointer',
+                  background: activeFolder === String(folder.id) ? 'rgba(212,160,23,0.2)' : 'rgba(255,255,255,0.05)',
+                  color: activeFolder === String(folder.id) ? '#f0d78c' : '#8a8070',
+                  fontSize: 12, fontFamily: "'DM Sans', sans-serif", fontWeight: activeFolder === String(folder.id) ? 600 : 400,
+                  border: `1px solid ${activeFolder === String(folder.id) ? 'rgba(212,160,23,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                  whiteSpace: 'nowrap',
+                }}>
+                {folder.id === 'all' ? '📂' : '📁'} {folder.name}
+                <span style={{ marginLeft: 5, fontSize: 10, color: activeFolder === String(folder.id) ? '#d4a017' : '#444' }}>
+                  {folder.photoCount}
+                </span>
               </button>
             ))}
-
-            {/* Per-folder Selected Photos virtual cards */}
-            {folders.map(folder => {
-              const fid = String(folder.id)
-              const count = isLocked
-                ? photos.filter(p => String(p.folderDbId) === fid && p.isSelected).length
-                : photos.filter(p => String(p.folderDbId) === fid && selected.has(p.id)).length
-              if (count === 0) return null
-              return (
-                <button key={`sel_${folder.id}`} onClick={() => openFolder(`selected_${fid}`)}
-                  style={{
-                    background: 'rgba(212,160,23,0.06)', border: '1px solid rgba(212,160,23,0.25)',
-                    borderRadius: 14, padding: isMobile ? '20px 16px' : '24px 20px',
-                    cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
-                    display: 'flex', flexDirection: 'column', gap: 10,
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(212,160,23,0.12)'; e.currentTarget.style.borderColor = 'rgba(212,160,23,0.5)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(212,160,23,0.06)'; e.currentTarget.style.borderColor = 'rgba(212,160,23,0.25)' }}>
-                  <div style={{ fontSize: isMobile ? 28 : 34 }}>⭐</div>
-                  <div>
-                    <p style={{ color: '#f0d78c', fontSize: isMobile ? 14 : 15, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {folder.name} Selected
-                    </p>
-                    <span style={{ fontSize: 11, color: '#d4a017', background: 'rgba(212,160,23,0.12)', borderRadius: 20, padding: '2px 10px' }}>
-                      {count} selected{isLocked && ' 🔒'}
-                    </span>
-                  </div>
-                </button>
-              )
-            })}
-
-            {folders.length === 0 && photos.length === 0 && (
-              <div style={{ gridColumn: '1/-1', textAlign: 'center', paddingTop: 60 }}>
-                <div style={{ fontSize: 48, marginBottom: 14 }}>📸</div>
-                <p style={{ color: '#555', fontSize: 15 }}>No photos here yet — check back soon!</p>
-              </div>
-            )}
           </div>
-        </main>
+        </div>
       )}
 
-      {/* ── Photos view ── */}
-      {view === 'photos' && (
-        <main style={{ padding: isMobile ? '14px 12px' : '24px 32px' }}>
+      {/* ── Body: sidebar + gallery ── */}
+      <div style={{ display: 'flex', minHeight: `calc(100vh - ${isMobile ? 56 : 64}px)` }}>
 
-          {/* Back button + title */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
-            <button onClick={backToFolders}
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#8a8070', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontSize: 13, fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', gap: 6 }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; e.currentTarget.style.color = '#f5f0e8' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#8a8070' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-              Albums
-            </button>
-            <div style={{ width: 1, height: 18, background: '#1e1e1e' }} />
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: isMobile ? 18 : 22, color: activeFolder.startsWith('selected_') ? '#f0d78c' : '#f5f0e8', margin: 0 }}>
-              {activeFolderName}
-            </h1>
-            <span className="badge badge-gold" style={{ fontSize: 11 }}>{filteredPhotos.length} photos</span>
-            {maxCount > 0 && (
-              <span className="badge" style={{ fontSize: 11, background: atLimit ? 'rgba(251,191,36,0.15)' : 'rgba(74,222,128,0.1)', color: atLimit ? '#fbbf24' : '#4ade80', border: `1px solid ${atLimit ? 'rgba(251,191,36,0.3)' : 'rgba(74,222,128,0.2)'}` }}>
-                {selected.size}/{maxCount}
-              </span>
-            )}
+        {/* Desktop sidebar */}
+        {!isMobile && folders.length > 0 && (
+          <aside style={{ width: 210, background: '#0d0d0d', borderRight: '1px solid #1a1a1a', padding: '20px 12px', flexShrink: 0, position: 'sticky', top: 64, height: 'calc(100vh - 64px)', overflowY: 'auto' }}>
+            <p style={{ fontSize: 10, color: '#444', letterSpacing: '0.12em', textTransform: 'uppercase', paddingLeft: 8, marginBottom: 10 }}>Folders</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {folderTabs.map(folder => (
+                <button key={folder.id}
+                  onClick={() => setActiveFolder(String(folder.id))}
+                  style={{
+                    width: '100%', textAlign: 'left', padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                    background: activeFolder === String(folder.id) ? 'rgba(212,160,23,0.12)' : 'transparent',
+                    color: activeFolder === String(folder.id) ? '#f0d78c' : '#8a8070',
+                    fontSize: 13, fontFamily: "'DM Sans', sans-serif",
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {folder.id === 'all' ? '📂' : '📁'} {folder.name}
+                  </span>
+                  <span style={{ fontSize: 11, color: '#555', flexShrink: 0, marginLeft: 6 }}>{folder.photoCount}</span>
+                </button>
+              ))}
+            </div>
+          </aside>
+        )}
+
+        {/* Main gallery */}
+        <main style={{ flex: 1, padding: isMobile ? '16px 12px' : '28px 32px', overflowY: 'auto' }}>
+
+          {/* Title + badges */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+            <div>
+              <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: isMobile ? 20 : 24, color: '#f5f0e8', marginBottom: 2 }}>
+                {activeFolder === 'all' ? 'Your Gallery' : folders.find(f => String(f.id) === activeFolder)?.name || 'Your Gallery'}
+              </h1>
+              {!isMobile && <p style={{ color: '#8a8070', fontSize: 13 }}>Tap checkbox to select · Tap image to zoom</p>}
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className="badge badge-gold" style={{ fontSize: 11 }}>{filteredPhotos.length} photos</span>
+              {maxCount > 0 && (
+                <span className="badge" style={{
+                  fontSize: 11,
+                  background: atLimit ? 'rgba(251,191,36,0.15)' : 'rgba(74,222,128,0.1)',
+                  color: atLimit ? '#fbbf24' : '#4ade80',
+                  border: `1px solid ${atLimit ? 'rgba(251,191,36,0.3)' : 'rgba(74,222,128,0.2)'}`,
+                }}>
+                  {selected.size}/{maxCount}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Action buttons */}
-          {filteredPhotos.length > 0 && !isLocked && !activeFolder.startsWith('selected_') && (
+          {filteredPhotos.length > 0 && !isLocked && (
             <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
               <button onClick={() => setConfirmSelectAll(true)} className="btn-outline" style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12 }}>Select All</button>
               <button onClick={() => setConfirmClearAll(true)} className="btn-outline" style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12 }}>Clear All</button>
+              {selected.size > 0 && (
+                <button onClick={() => setConfirmOpen(true)} className="btn-gold" style={{ padding: '7px 18px', borderRadius: 8, fontSize: 12 }}>
+                  ✓ Submit {selected.size} Photo{selected.size !== 1 ? 's' : ''}
+                </button>
+              )}
             </div>
           )}
 
           {/* Locked notice */}
-          {isLocked && (
+          {isLocked && filteredPhotos.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16, background: 'rgba(96,165,250,0.06)', border: '1px solid rgba(96,165,250,0.15)', borderRadius: 10, padding: '12px 14px' }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>🔒</span>
               <div>
                 <p style={{ fontSize: 13, color: '#60a5fa', fontWeight: 600, marginBottom: 2 }}>Selection locked — view only</p>
-                <p style={{ fontSize: 12, color: '#555' }}>Contact your photographer to make changes.</p>
+                <p style={{ fontSize: 12, color: '#555' }}>Selected photos are highlighted in gold. Contact your photographer to make changes.</p>
               </div>
             </div>
           )}
@@ -620,7 +563,7 @@ export default function CustomerGallery() {
           {filteredPhotos.length === 0 ? (
             <div style={{ textAlign: 'center', paddingTop: 60 }}>
               <div style={{ fontSize: 48, marginBottom: 14 }}>📸</div>
-              <p style={{ color: '#555', fontSize: 15 }}>No photos here yet.</p>
+              <p style={{ color: '#555', fontSize: 15 }}>No photos here yet — check back soon!</p>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(130px, 1fr))' : 'repeat(auto-fill, minmax(180px, 1fr))', gap: isMobile ? 7 : 10 }}>
@@ -641,28 +584,60 @@ export default function CustomerGallery() {
                     }}
                     onClick={() => openLightbox(photo)}
                   >
-                    <img src={photo.thumbnailUrl} alt={photo.originalName}
+                    <img
+                      src={photo.thumbnailUrl}
+                      alt={photo.originalName}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', userSelect: 'none' }}
-                      loading="lazy" draggable={false} />
-                    <div style={{ position: 'absolute', bottom: 5, right: 6, fontFamily: "'Playfair Display', serif", fontSize: 8, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em', textShadow: '0 1px 4px rgba(0,0,0,0.95)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>© {APP_NAME}</div>
+                      loading="lazy"
+                      draggable={false}
+                    />
+
+                    {/* Watermark */}
+                    <div style={{
+                      position: 'absolute', bottom: 5, right: 6,
+                      fontFamily: "'Playfair Display', serif", fontSize: 8, fontWeight: 700,
+                      color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em',
+                      textShadow: '0 1px 4px rgba(0,0,0,0.95)', pointerEvents: 'none', whiteSpace: 'nowrap',
+                    }}>© Praveen Photography</div>
+
+                    {/* Checkbox */}
                     {!isLocked ? (
-                      <div onClick={e => toggleSelect(photo.id, e)}
-                        style={{ position: 'absolute', top: 7, right: 7, width: isMobile ? 26 : 22, height: isMobile ? 26 : 22, borderRadius: 6, background: isSel ? '#d4a017' : 'rgba(0,0,0,0.55)', border: `2px solid ${isSel ? '#d4a017' : 'rgba(255,255,255,0.4)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isDisabled ? 'not-allowed' : 'pointer', transition: 'all 0.15s', zIndex: 5, backdropFilter: 'blur(4px)' }}
+                      <div
+                        onClick={e => toggleSelect(photo.id, e)}
+                        style={{
+                          position: 'absolute', top: 7, right: 7,
+                          width: isMobile ? 26 : 22, height: isMobile ? 26 : 22, borderRadius: 6,
+                          background: isSel ? '#d4a017' : 'rgba(0,0,0,0.55)',
+                          border: `2px solid ${isSel ? '#d4a017' : 'rgba(255,255,255,0.4)'}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: isDisabled ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.15s', zIndex: 5,
+                          backdropFilter: 'blur(4px)',
+                        }}
                         title={isDisabled ? `Max ${maxCount} photos allowed` : isSel ? 'Deselect' : 'Select'}>
                         {isSel && <span style={{ color: '#0a0a0a', fontSize: isMobile ? 14 : 13, fontWeight: 800, lineHeight: 1 }}>✓</span>}
                       </div>
                     ) : isSel ? (
-                      <div style={{ position: 'absolute', top: 7, right: 7, width: 22, height: 22, borderRadius: 6, background: '#d4a017', border: '2px solid #d4a017', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5 }}>
+                      <div style={{
+                        position: 'absolute', top: 7, right: 7,
+                        width: 22, height: 22, borderRadius: 6,
+                        background: '#d4a017', border: '2px solid #d4a017',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5,
+                      }}>
                         <span style={{ color: '#0a0a0a', fontSize: 13, fontWeight: 800, lineHeight: 1 }}>✓</span>
                       </div>
                     ) : null}
+
+                    {/* {photo.isSelected && !isSel && (
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, background: 'rgba(74,222,128,0.18)', padding: '3px 0', fontSize: 9, color: '#4ade80', textAlign: 'center', letterSpacing: '0.05em', fontWeight: 700 }}>SAVED</div>
+                    )} */}
                   </div>
                 )
               })}
             </div>
           )}
         </main>
-      )}
+      </div>
 
       {/* Floating counter */}
       {photos.length > 0 && (
@@ -704,23 +679,14 @@ export default function CustomerGallery() {
         <ConfirmModal
           icon="☑️"
           title="Select All Photos"
-          message={`This will select all photos in this folder${maxCount > 0 ? ` (up to your limit of ${maxCount})` : ''}. Are you sure?`}
+          message={`This will select ${maxCount > 0 ? `up to ${maxCount}` : 'all'} photos. Are you sure?`}
           confirmLabel="Select All"
           cancelLabel="Cancel"
           onConfirm={() => {
-            setSelected(prev => {
-              const next = new Set(prev)
-              let hitLimit = false
-              for (const p of filteredPhotos) {
-                if (!next.has(p.id)) {
-                  if (maxCount > 0 && next.size >= maxCount) { hitLimit = true; break }
-                  next.add(p.id)
-                }
-              }
-              if (hitLimit) showToast(`Limited to ${maxCount} photos max`, 'error')
-              scheduleSync(next)
-              return next
-            })
+            const next = new Set(maxCount > 0 ? filteredPhotos.slice(0, maxCount).map(p => p.id) : photos.map(p => p.id))
+            setSelected(next)
+            scheduleSync(next)
+            if (maxCount > 0 && filteredPhotos.length > maxCount) showToast(`Limited to ${maxCount} photos max`, 'error')
             setConfirmSelectAll(false)
           }}
           onCancel={() => setConfirmSelectAll(false)}
@@ -730,18 +696,15 @@ export default function CustomerGallery() {
       {confirmClearAll && (
         <ConfirmModal
           icon="🗑️"
-          title="Clear Folder Selections"
-          message="This will deselect all photos in this folder. Selections in other folders will be kept."
+          title="Clear All Selections"
+          message="This will remove all your selected photos. Are you sure?"
           confirmLabel="Clear All"
           cancelLabel="Cancel"
           danger
           onConfirm={() => {
-            const folderIds = new Set(filteredPhotos.map(p => p.id))
-            setSelected(prev => {
-              const next = new Set([...prev].filter(id => !folderIds.has(id)))
-              scheduleSync(next)
-              return next
-            })
+            const next = new Set<number>()
+            setSelected(next)
+            scheduleSync(next)
             setConfirmClearAll(false)
           }}
           onCancel={() => setConfirmClearAll(false)}
@@ -854,7 +817,7 @@ export default function CustomerGallery() {
                   fontFamily: "'Playfair Display', serif", fontSize: isMobile ? 10 : 12, fontWeight: 700,
                   color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em',
                   textShadow: '0 1px 5px rgba(0,0,0,0.99)', pointerEvents: 'none', whiteSpace: 'nowrap',
-                }}>© {APP_NAME}</div>
+                }}>© Praveen Photography</div>
               </div>
             </div>
           </div>

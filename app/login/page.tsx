@@ -1,8 +1,7 @@
-"use client"
+'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { saveAdminSession, saveCustomerSession, getSessionRole } from '@/app/utils/session'
-import { APP_NAME } from '@/lib/config'
 
 function LoginContent() {
   const router = useRouter()
@@ -124,7 +123,7 @@ function LoginContent() {
                 maxLength={11}
               />
               <p style={{ fontSize: '12px', color: '#555', marginTop: '8px', fontFamily: "'DM Sans', sans-serif" }}>
-                Your access code was sent to you by {APP_NAME}
+                Your access code was sent to you by Praveen Photography
               </p>
             </div>
           )}

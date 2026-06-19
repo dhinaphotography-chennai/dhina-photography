@@ -6,7 +6,6 @@ import ConfirmModal from '@/app/components/ConfirmModal'
 import AlertModal from '@/app/components/AlertModal'
 import PhotoLoader from '@/app/components/PhotoLoader'
 import { authHeaders } from '@/app/utils/session'
-import { APP_NAME } from '@/lib/config'
 
 interface Customer {
   id: number; name: string; email: string; phone: string
@@ -557,9 +556,7 @@ export default function CustomerDetailPage() {
     }
 
     // Create / clear the output subfolder inside the picked folder
-    const safeCustomerName = customer.name.replace(/[/\\?%*:|"<>]/g, '_').trim() || 'Customer'
-    const safeFolderName = folderName.replace(/[/\\?%*:|"<>]/g, '_').trim() || 'Folder'
-    const destFolderName = `${safeCustomerName}-${safeFolderName}_selected`
+    const destFolderName = `${customer.name}_selected`
     try { await (srcHandle as any).removeEntry(destFolderName, { recursive: true }) } catch {}
     const destDir = await srcHandle.getDirectoryHandle(destFolderName, { create: true })
 
@@ -776,7 +773,7 @@ export default function CustomerDetailPage() {
         <div className="stat-card" style={{ position: 'relative' }}>
           <button
             onClick={() => {
-              const msg = `Dear ${customer.name}\nYour event "${customer.eventName}" is ready for photo selection. Your event code is ${customer.accessCode}. You can select your photos using the following options:\nWebsite: ${process.env.NEXT_PUBLIC_APP_URL || ''}/\nRegards,\n${APP_NAME}`
+              const msg = `Dear ${customer.name}\nYour event "${customer.eventName}" is ready for photo selection. Your event code is ${customer.accessCode}. You can select your photos using the following options:\nWebsite: ${process.env.NEXT_PUBLIC_APP_URL}/\nRegards,\nPraveen Photography`
               navigator.clipboard.writeText(msg).then(() => showToast('Message copied to clipboard!'))
             }}
             style={{ position: 'absolute', top: 20, right: 8, fontSize: 10, color: '#f0d78c', background: 'rgba(212,160,23,0.12)', border: '1px solid rgba(212,160,23,0.3)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>

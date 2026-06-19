@@ -1,6 +1,5 @@
-"use client"
+'use client'
 import { useLogo } from '@/app/context/LogoContext'
-import { APP_NAME } from '@/lib/config'
 
 interface PhotoLoaderProps {
   /** true = full-viewport branded loader (customer portal)
@@ -102,7 +101,7 @@ export default function PhotoLoader({ fullPage = false, message = 'Loading…' }
           </div>
           <div style={{ textAlign: 'center' }}>
             <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: '#f0d78c', fontWeight: 600, marginBottom: 6, letterSpacing: '0.02em' }}>
-              {APP_NAME}
+              Praveen Photography
             </p>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <span style={{ fontSize: 12, color: '#555' }}>{message}</span>

@@ -4,7 +4,6 @@ import Link from 'next/link'
 import PhotoLoader from '@/app/components/PhotoLoader'
 import { authHeaders } from '@/app/utils/session'
 import { useLogo } from '@/app/context/LogoContext'
-import { APP_NAME } from '@/lib/config'
 
 interface Customer {
   id: number
@@ -97,7 +96,7 @@ export default function AdminDashboard() {
         <PhotoLoader message="Loading clients…" />
       ) : customers.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-          <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #d4a017, #b8860b)', overflow: 'hidden', margin: '0 auto 16px' }}><img src={logoUrl} alt={APP_NAME} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
+          <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #d4a017, #b8860b)', overflow: 'hidden', margin: '0 auto 16px' }}><img src={logoUrl} alt="Praveen Photography" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
           <p style={{ color: '#555', fontSize: 16, marginBottom: 20 }}>No clients yet</p>
           <Link href="/admin/customers">
             <button className="btn-gold" style={{ padding: '12px 28px', borderRadius: 10, fontSize: 14 }}>Add First Client</button>
