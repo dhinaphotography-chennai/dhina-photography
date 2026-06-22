@@ -31,6 +31,8 @@ cp .env.local.example .env.local
 # Fill in DATABASE_URL, JWT_SECRET, and Cloudflare R2 credentials
 ```
 
+To customize the public-facing app name shown across the UI, set NEXT_PUBLIC_APP_NAME in your environment. If omitted, it defaults to "Praveen Photography".
+
 ### 3. Set up Cloudflare R2
 
 1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → **R2**

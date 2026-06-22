@@ -1,4 +1,4 @@
-'use client'
+"use client"
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState, useRef } from 'react'
@@ -6,6 +6,7 @@ import ConfirmModal from '@/app/components/ConfirmModal'
 import { authHeaders, clearSession } from '@/app/utils/session'
 import { useSessionGuard } from '@/app/hooks/useSessionGuard'
 import { useLogo } from '@/app/context/LogoContext'
+import { APP_NAME } from '@/lib/config'
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const logoUrl = useLogo()
@@ -59,15 +60,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         display: 'flex', flexDirection: 'column', padding: '24px 16px', flexShrink: 0,
       }}>
         <div style={{ marginBottom: 40 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 8 }}>
             <div style={{
               width: 36, height: 36, borderRadius: '50%',
               background: 'linear-gradient(135deg, #d4a017, #b8860b)',
               overflow: 'hidden', flexShrink: 0,
-            }}><img src={logoUrl} alt="Praveen Photography" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
+            }}><img src={logoUrl} alt={APP_NAME} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
             <div>
-              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 14, color: '#f0d78c', fontWeight: 600 }}>Praveen</div>
-              <div style={{ fontSize: 10, color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Photography</div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 14, color: '#f0d78c', fontWeight: 600 }}>{APP_NAME.split(' ')[0]}</div>
+              <div style={{ fontSize: 10, color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{APP_NAME.split(' ').slice(1).join(' ')}</div>
             </div>
           </div>
         </div>
@@ -134,7 +135,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 14 }}>🔔</span>
                   <div style={{ fontSize: 11, color: '#8a8070', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600 }}>
-                    Expiring Soon
+                    Notifications
                   </div>
                 </div>
                 {expiring.length === 0 ? (
@@ -153,7 +154,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       >
                         <div style={{ fontSize: 13, color: '#f5f0e8', fontWeight: 600 }}>{c.name}</div>
                         <div style={{ fontSize: 11, color: c.daysLeft <= 2 ? '#ef4444' : '#f59e0b', marginTop: 2 }}>
-                          Auto-deletes in {c.daysLeft} day{c.daysLeft !== 1 ? 's' : ''}
+                          {c.name} customer has crossed 45 days
                         </div>
                       </div>
                     </Link>

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveAdminSession, saveCustomerSession, getSessionRole } from '@/app/utils/session'
 import { useLogo } from '@/app/context/LogoContext'
+import { APP_NAME } from '@/lib/config'
 
 export default function HomePage() {
   const router = useRouter()
@@ -121,9 +122,9 @@ export default function HomePage() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 20px', overflow: 'hidden',
               boxShadow: '0 0 50px rgba(212,160,23,0.25), 0 0 100px rgba(212,160,23,0.1)',
-            }}><img src={logoUrl} alt="Praveen Photography" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
+            }}><img src={logoUrl} alt={APP_NAME} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>
             <h1 className="gold-text" style={{ fontFamily: "'Playfair Display', serif", fontSize: 34, fontWeight: 700, marginBottom: 8 }}>
-              Praveen Photography
+              {APP_NAME}
             </h1>
             <p style={{ color: '#8a8070', fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase' }}>
               Capturing Moments · Crafting Memories
@@ -174,7 +175,7 @@ export default function HomePage() {
           </div>
 
           <p style={{ textAlign: 'center', color: '#333', fontSize: 12, marginTop: 28 }}>
-            © {new Date().getFullYear()} Praveen Photography · All rights reserved
+            © {new Date().getFullYear()} {APP_NAME} · All rights reserved
           </p>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { customers, folders, photos } from '@/lib/schema'
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import { verifyToken, getTokenFromRequest } from '@/lib/auth'
 
 function customerAuth(req: NextRequest) {
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     })
     .from(photos)
     .where(eq(photos.customerId, cId))
-    .orderBy(photos.uploadedAt)
+    .orderBy(asc(photos.originalName))
 
   return NextResponse.json({
     customer: {

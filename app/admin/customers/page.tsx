@@ -49,16 +49,6 @@ export default function CustomersPage() {
 
   useEffect(() => {
     loadCustomers()
-    fetch('/api/admin/expiring', { headers: authHeaders() })
-      .then(res => res.ok ? res.json() : [])
-      .then((list: { name: string; daysLeft: number }[]) => {
-        if (!list.length) return
-        const msg = list.length === 1
-          ? `⚠ ${list[0].name} will be auto-deleted in ${list[0].daysLeft} day${list[0].daysLeft !== 1 ? 's' : ''}`
-          : `⚠ ${list.length} clients will be auto-deleted within 5 days`
-        showToast(msg, 'warning')
-      })
-      .catch(() => {})
   }, [])
 
   function validateField(key: string, value: string): string {
